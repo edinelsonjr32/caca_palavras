@@ -28,7 +28,7 @@ class DatabaseSeeder extends Seeder
 
         // --- CRIAÇÃO DE USUÁRIOS ---
         User::factory()->create(['name' => 'Jogador Teste', 'email' => 'jogador@teste.com', 'password' => Hash::make('123456')]);
-        User::factory(10)->create()->each(fn($user) => Ranking::factory()->create(['user_id' => $user->id]));
+        //User::factory(10)->create()->each(fn($user) => Ranking::factory()->create(['user_id' => $user->id]));
 
         // --- CRIAÇÃO DOS NÍVEIS COM A NOVA CURVA DE DIFICULDADE ---
         for ($i = 1; $i <= 100; $i++) {
