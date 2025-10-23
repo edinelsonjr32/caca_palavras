@@ -13,6 +13,9 @@ class Word extends Model
     protected $fillable = [
         'level_id',
         'word',
+        'translation', // Adicionado
+        'image_url',    // Adicionado
+        'icon' // Adicionado
     ];
 
     /**
