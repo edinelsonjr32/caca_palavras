@@ -8,9 +8,6 @@
     {{-- GARANTIA DE ESTILO: Se você usa Laravel 9+ com Vite, use esta linha: --}}
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     
-    {{-- Se você usa Laravel Mix (versões mais antigas), use: --}}
-    {{-- <link href="{{ asset('css/app.css') }}" rel="stylesheet"> --}}
-
     {{-- 1. Incluindo Font Awesome (para ícones) --}}
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLMDJ87uwNmoPz2z8/U52gqF6L/t+eFk5R/B5U1e4e6yK0K1b1b1g==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     
@@ -47,10 +44,14 @@
             {{-- Ícone de Destaque --}}
             <i class="fas fa-brain text-violet-500 text-5xl mb-4 animate-bounce"></i>
 
-            {{-- Título Principal com Sombra de Texto --}}
-            <h1 class="text-7xl sm:text-8xl font-black text-white mb-6 leading-none tracking-tighter" style="text-shadow: 0 0 10px rgba(139, 92, 246, 0.7);">
-                <span class="text-violet-500">WORD</span> <span class="text-yellow-400">QUEST</span>
-            </h1>
+            {{-- Título Principal: LOGO COM O DOBRO DO TAMANHO E BOTÕES MENOS ARREDONDADOS --}}
+            <div class="flex justify-center items-center mb-6">
+                <img 
+                    src="{{ asset('logo_fastlex.png') }}" 
+                    alt="Logo Word Quest" 
+                    class="h-64 sm:h-80 transition duration-300 transform hover:scale-105" 
+                    style="filter: drop-shadow(0 0 10px rgba(139, 92, 246, 0.7));">
+            </div>
 
             {{-- Subtítulo Chamativo --}}
             <p class="text-xl sm:text-2xl text-gray-300 font-light mb-10">
@@ -60,16 +61,16 @@
             {{-- Área de Ação (CTA - Call To Action) --}}
             <div class="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-6">
                 
-                {{-- Botão Principal: JOGAR AGORA --}}
+                {{-- Botão Principal: JOGAR AGORA (rounded-2xl) --}}
                 <a href="{{ route('login') }}" 
-                   class="flex items-center justify-center space-x-2 bg-violet-600 hover:bg-violet-700 text-white font-extrabold py-3 px-10 rounded-full text-xl shadow-2xl shadow-violet-500/50 transition duration-300 transform hover:scale-105 hover:shadow-violet-400/70 uppercase tracking-wider">
+                    class="flex items-center justify-center space-x-2 bg-violet-600 hover:bg-violet-700 text-white font-extrabold py-3 px-10 rounded-2xl text-xl shadow-2xl shadow-violet-500/50 transition duration-300 transform hover:scale-105 hover:shadow-violet-400/70 uppercase tracking-wider">
                     <i class="fas fa-play"></i> 
                     <span>JOGAR AGORA!</span>
                 </a>
                 
-                {{-- Botão Secundário: COMO FUNCIONA --}}
+                {{-- Botão Secundário: COMO FUNCIONA (rounded-2xl) --}}
                 <a href="#how-it-works" 
-                   class="flex items-center justify-center space-x-2 bg-gray-700 hover:bg-gray-600 text-gray-200 border-2 border-violet-500 font-semibold py-3 px-10 rounded-full text-xl transition duration-300 transform hover:scale-105 uppercase tracking-wider">
+                    class="flex items-center justify-center space-x-2 bg-gray-700 hover:bg-gray-600 text-gray-200 border-2 border-violet-500 font-semibold py-3 px-10 rounded-2xl text-xl transition duration-300 transform hover:scale-105 uppercase tracking-wider">
                     <i class="fas fa-info-circle"></i>
                     <span>Como Funciona?</span>
                 </a>

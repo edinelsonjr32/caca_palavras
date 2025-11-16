@@ -9,10 +9,6 @@
     {{-- GARANTIA DE ESTILO: Se você usa Laravel 9+ com Vite, use esta linha: --}}
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
-    {{-- Se você usa Laravel Mix (versões mais antigas), use: --}}
-    {{--
-    <link href="{{ asset('css/app.css') }}" rel="stylesheet"> --}}
-
     {{-- Incluindo Font Awesome (para ícones) --}}
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
         integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLMDJ87uwNmoPz2z8/U52gqF6L/t+eFk5R/B5U1e4e6yK0K1b1b1g=="
@@ -26,10 +22,20 @@
             {{-- Card de Cadastro: Consistente com o estilo da Landing Page --}}
             <div class="bg-gray-800 shadow-2xl rounded-xl px-8 pt-8 pb-10 border-t-4 border-violet-600">
 
-                {{-- Ícone e Título --}}
+                {{-- Área do Título / Logo --}}
                 <div class="text-center mb-6">
-                    <i class="fas fa-user-plus text-violet-500 text-4xl mb-3"></i>
-                    <h1 class="text-3xl font-extrabold text-white">
+                    
+                    {{-- 🟢 INSERÇÃO DA LOGO AQUI --}}
+                    <div class="flex justify-center mb-3">
+                        <img 
+                            src="{{ asset('logo_fastlex.png') }}" 
+                            alt="Logo Word Quest" 
+                            class="h-16 w-auto transition duration-300"
+                            style="filter: drop-shadow(0 0 5px rgba(139, 92, 246, 0.4));">
+                    </div>
+                    {{-- 🔴 REMOÇÃO DO ÍCONE E TÍTULO ANTIGOS --}}
+
+                    <h1 class="text-2xl font-extrabold text-white">
                         Crie Sua Conta
                     </h1>
                     <p class="text-gray-400 text-sm mt-1">Junte-se à aventura e aprenda inglês!</p>

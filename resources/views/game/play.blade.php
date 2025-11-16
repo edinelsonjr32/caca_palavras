@@ -3,11 +3,23 @@
 @section('content')
 
 <style>
+    /* Estilos (Mantidos) */
     .vocab-card { width: 160px; height: 100px; border-radius: 1rem; display: flex; align-items: center; justify-content: center; text-align: center; padding: 1rem; transition: background-color 0.5s ease; cursor: default; }
     .vocab-card.initial-state { background-color: #facc15; border: 2px solid #f59e0b; }
     .vocab-card.found-state { background-color: #22c55e; border: 2px solid #16a34a; }
-    .selection-highlight { background-color: #8B5CF6; }
+    /* Feedback de Seleção por Clique */
+    .selection-highlight { 
+        background-color: #8B5CF6 !important; 
+        box-shadow: 0 0 5px #8B5CF6; 
+    }
     .found-word { background-color: #16a34a !important; color: white !important; }
+    .lost-word { background-color: #d32f2f !important; color: white !important; border: 2px solid #b71c1c; animation: pulse-red 1s infinite; }
+    @keyframes pulse-red { 0% { opacity: 0.8; } 50% { opacity: 1; } 100% { opacity: 0.8; } }
+
+    /* Estilos do Tabuleiro (Mantidos) */
+    #word-search-grid-container { max-width: 500px; margin: 0 auto; background-color: var(--dark-card, #2d3748); padding: 1.5rem; border-radius: 1rem; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); width: 100%; }
+    #word-search-grid { display: grid; gap: 2px; width: 100%; }
+    .grid-cell { aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center; font-size: clamp(0.8rem, 3vw, 1.4rem); font-weight: bold; background-color: #4A5568; color: white; border-radius: 4px; transition: background-color 0.1s; }
 </style>
 
 {{-- Modal de Nível Concluído --}}
@@ -23,10 +35,7 @@
     {{-- Header --}}
     <div class="flex justify-between items-center mb-4 px-2">
         <h1 class="text-3xl font-bold text-white">Nível {{ $level->level_number }}</h1>
-        <form action="{{ route('game.end') }}" method="GET">
-            <input type="hidden" name="status" value="failed">
-            <button type="submit" class="bg-gray-600/50 hover:bg-gray-600 border-b-gray-800 btn-duolingo text-white font-semibold py-2 px-4 rounded-xl">Desistir</button>
-        </form>
+        <button id="quit-button" class="bg-gray-600/50 hover:bg-gray-600 border-b-gray-800 btn-duolingo text-white font-semibold py-2 px-4 rounded-xl">Desistir</button>
     </div>
 
     {{-- Barra de Progresso --}}
@@ -36,10 +45,14 @@
 
     {{-- Layout Principal --}}
     <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {{-- Grid do Jogo --}}
-        <div class="md:col-span-2 bg-dark-card p-6 rounded-2xl shadow-lg">
-            <div id="word-search-grid" class="grid gap-1 select-none cursor-pointer" style="grid-template-columns: repeat({{ $level->grid_size }}, minmax(0, 1fr));"></div>
+        <div class="md:col-span-2 flex justify-center">
+            <div id="word-search-grid-container">
+                <div id="word-search-grid" class="grid gap-1 select-none cursor-pointer">
+                    {{-- Células serão injetadas via JS --}}
+                </div>
+            </div>
         </div>
+
 
         {{-- Barra Lateral de Informações --}}
         <div class="space-y-6">
@@ -96,97 +109,203 @@ document.addEventListener('DOMContentLoaded', () => {
         modal: document.getElementById('level-complete-modal'),
         modalContent: document.getElementById('modal-content'),
         nextLevelBtn: document.getElementById('next-level-button'),
+        quitButton: document.getElementById('quit-button') 
     };
 
     const state = {
         gridMatrix: [],
-        isSelecting: false,
         selection: [],
         foundWords: new Set(),
+        wordsToFindLocations: {},
         timeLeft: config.timeLeftInitial,
-        timerInterval: null
+        timerInterval: null,
+        clickTimeout: null 
+    };
+    
+    // --- 1.1 Funções de Áudio ---
+    // ATENÇÃO: Substitua os caminhos abaixo por URLs reais dos seus arquivos MP3!
+    const sounds = {
+        click: new Audio("{{ asset('assets/sounds/click.mp3') }}"),    
+        correct: new Audio("{{ asset('assets/sounds/correct.mp3') }}"), 
+        error: new Audio("{{ asset('assets/sounds/error.mp3') }}"),     
+        levelUp: new Audio("{{ asset('assets/sounds/level_up.mp3') }}") 
     };
 
-    // --- 2. LÓGICA DE SELEÇÃO (MOUSE E TOQUE) ---
-    const startSelection = (event) => {
-        event.preventDefault();
-        const target = event.type === 'touchstart' ? event.touches[0].target : event.target;
-        const cell = target.closest('.grid-cell');
-        if (!cell) return;
-
-        state.isSelecting = true;
-        state.selection = [cell];
-        cell.classList.add('selection-highlight');
-
-        if (event.type === 'mousedown') {
-            window.addEventListener('mouseover', moveSelection);
-            window.addEventListener('mouseup', endSelection, { once: true });
-        } else if (event.type === 'touchstart') {
-            window.addEventListener('touchmove', moveSelection, { passive: false });
-            window.addEventListener('touchend', endSelection, { once: true });
+    const playSound = (type) => {
+        if (sounds[type]) {
+            sounds[type].currentTime = 0;
+            sounds[type].play().catch(e => {
+                 console.warn("Audio playback blocked:", e.message);
+            }); 
         }
     };
 
-    const moveSelection = (event) => {
-        if (!state.isSelecting) return;
-        event.preventDefault();
+    // --- 2. LÓGICA DE SELEÇÃO POR CLIQUE ---
+    
+    // NOVO: Adiciona listener para o botão Desistir
+    ui.quitButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        showRemainingWords();
+        // Redireciona após um pequeno atraso para o usuário ver o feedback
+        setTimeout(() => {
+            window.location.href = `${config.endGameUrl}?status=quit&score=${ui.score.textContent}`;
+        }, 3000); 
+    });
 
-        const clientX = event.type === 'touchmove' ? event.touches[0].clientX : event.clientX;
-        const clientY = event.type === 'touchmove' ? event.touches[0].clientY : event.clientY;
-
-        const elementUnderPointer = document.elementFromPoint(clientX, clientY);
-        const cell = elementUnderPointer ? elementUnderPointer.closest('.grid-cell') : null;
-
-        if (cell && !state.selection.includes(cell)) {
-            state.selection.push(cell);
-            cell.classList.add('selection-highlight');
-        }
+    const getCellElement = (r, c) => {
+        return ui.grid.querySelector(`[data-row="${r}"][data-col="${c}"]`);
     };
 
-    const endSelection = () => {
-        if (!state.isSelecting) return;
-        state.isSelecting = false;
+    const handleCellClick = (event) => {
+        const cell = event.target.closest('.grid-cell');
+        if (!cell || cell.classList.contains('found-word')) return;
 
+        const isFirstClick = state.selection.length === 0;
+
+        if (isFirstClick) {
+            resetSelection(); 
+            startClickTimer();
+            selectCell(cell); 
+            playSound('click'); // Som de clique
+        } else {
+            const lastCell = state.selection[state.selection.length - 1];
+            
+            if (isAdjacent(lastCell, cell)) {
+                resetClickTimer();
+                startClickTimer();
+                selectCell(cell); 
+                playSound('click'); // Som de clique
+                
+                checkIfWordIsComplete(); 
+            } else {
+                // Se não for adjacente: reseta (erro de sequência)
+                resetSelection(); 
+                resetClickTimer(); 
+                playSound('error'); // Som de erro
+                
+                selectCell(cell); 
+                startClickTimer();
+            }
+        }
+    };
+    
+    // --- 2.1 Funções de Suporte ao Clique ---
+    const selectCell = (cell) => {
+        state.selection.push(cell);
+        // CORRIGIDO: Aplica a classe de destaque imediatamente na célula clicada
+        cell.classList.add('selection-highlight'); 
+    };
+
+    const resetSelection = () => {
+        state.selection.forEach(cell => {
+            cell.classList.remove('selection-highlight');
+        });
+        state.selection = [];
+    };
+
+    const startClickTimer = () => {
+        state.clickTimeout = setTimeout(() => {
+            resetSelection();
+        }, 1000); 
+    };
+
+    const resetClickTimer = () => {
+        clearTimeout(state.clickTimeout);
+    };
+
+    const isAdjacent = (cell1, cell2) => {
+        const r1 = parseInt(cell1.dataset.row);
+        const c1 = parseInt(cell1.dataset.col);
+        const r2 = parseInt(cell2.dataset.row);
+        const c2 = parseInt(cell2.dataset.col);
+        
+        const dR = Math.abs(r1 - r2);
+        const dC = Math.abs(c1 - c2);
+
+        return (dR <= 1 && dC <= 1) && (dR !== 0 || dC !== 0); 
+    };
+
+    const checkIfWordIsComplete = () => {
+        if (state.selection.length < 2) return; 
+        
         const selectedWord = state.selection.map(cell => cell.textContent).join('');
         const reversedWord = [...selectedWord].reverse().join('');
-
-        checkWord(selectedWord, state.selection);
-        checkWord(reversedWord, [...state.selection].reverse());
-
-        setTimeout(() => {
-            state.selection.forEach(cell => {
-                if (!cell.classList.contains('found-word')) {
-                    cell.classList.remove('selection-highlight');
-                }
-            });
-            state.selection = [];
-        }, 300);
         
-        window.removeEventListener('mouseover', moveSelection);
-        window.removeEventListener('touchmove', moveSelection);
+        if (config.wordList.includes(selectedWord) || config.wordList.includes(reversedWord)) {
+            resetClickTimer(); 
+            checkWord(selectedWord, state.selection); 
+        }
     };
     
     // --- 3. LÓGICA DO JOGO ---
     const checkWord = async (word, cells) => {
-        if (!config.wordList.includes(word) || state.foundWords.has(word)) return;
+        if (state.foundWords.has(word)) {
+            resetSelection();
+            return false;
+        } 
+        
+        if (!config.wordList.includes(word)) {
+            resetSelection();
+            return false; 
+        }
+
+        const originalSelection = [...cells];
+        
         state.foundWords.add(word);
-        updateUIAfterFoundWord(word, cells);
-        updateProgressBar();
+
         const response = await fetch(config.validateUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': config.csrfToken },
             body: JSON.stringify({ selected_word: word, level_id: config.levelId, time_left: state.timeLeft })
         });
+        
         const data = await response.json();
+        
+        resetSelection(); 
+
         if (data.success && data.found) {
+            playSound('correct'); // Som de acerto
+            updateUIAfterFoundWord(word, originalSelection);
+            updateProgressBar();
             ui.score.textContent = data.score;
+            
+            if(state.wordsToFindLocations[word]) delete state.wordsToFindLocations[word];
+
             if (data.level_completed) {
+                playSound('levelUp'); // Som de passagem de fase
                 clearInterval(state.timerInterval);
                 showLevelCompleteModal(data.next_level_id);
             }
+            return true;
         }
+        
+        state.foundWords.delete(word);
+        playSound('error'); // Som de erro (caso o backend invalide)
+        return false;
     };
     
+    // NOVO: Função para marcar e mostrar as palavras que faltaram
+    const showRemainingWords = () => {
+        clearInterval(state.timerInterval); 
+        
+        for (const word in state.wordsToFindLocations) {
+            const locations = state.wordsToFindLocations[word];
+            locations.forEach(loc => {
+                const cell = getCellElement(loc.r, loc.c);
+                if (cell) {
+                    cell.classList.add('lost-word');
+                }
+            });
+            const card = document.querySelector(`.vocab-card[data-word="${word}"]`);
+            if (card) {
+                card.classList.remove('initial-state');
+                card.classList.remove('found-state');
+                card.classList.add('lost-word'); 
+            }
+        }
+        ui.grid.removeEventListener('click', handleCellClick);
+    };
+
     // --- 4. FUNÇÕES DE ATUALIZAÇÃO DA INTERFACE ---
     const updateUIAfterFoundWord = (word, cells) => {
         cells.forEach(cell => {
@@ -222,23 +341,82 @@ document.addEventListener('DOMContentLoaded', () => {
     const init = () => {
         state.gridMatrix = Array.from({ length: config.gridSize }, () => Array(config.gridSize).fill(''));
         const directions = [{ r: 0, c: 1 }, { r: 1, c: 0 }, { r: 1, c: 1 }, { r: 0, c: -1 }, { r: -1, c: 0 }, { r: -1, c: -1 }, { r: 1, c: -1 }, { r: -1, c: 1 }];
-        config.wordList.forEach(word => { let placed = false; let attempts = 0; while(!placed && attempts < 100) { attempts++; const dir = directions[Math.floor(Math.random() * directions.length)]; const rStart = Math.floor(Math.random() * config.gridSize); const cStart = Math.floor(Math.random() * config.gridSize); let canPlace = true; for (let i = 0; i < word.length; i++) { const r = rStart + i * dir.r, c = cStart + i * dir.c; if (r < 0 || r >= config.gridSize || c < 0 || c >= config.gridSize || (state.gridMatrix[r][c] !== '' && state.gridMatrix[r][c] !== word[i])) { canPlace = false; break; } } if (canPlace) { for (let i = 0; i < word.length; i++) { state.gridMatrix[rStart + i * dir.r][cStart + i * dir.c] = word[i]; } placed = true; } } });
+        const wordListToPlace = config.wordList.map(word => word);
+        state.wordsToFindLocations = {}; 
+
+        // Algoritmo de posicionamento de palavras
+        wordListToPlace.forEach(word => {
+            let placed = false; 
+            let attempts = 0; 
+            const maxAttempts = 100;
+            while(!placed && attempts < maxAttempts) { 
+                attempts++; 
+                const dir = directions[Math.floor(Math.random() * directions.length)];
+                const rStart = Math.floor(Math.random() * config.gridSize);
+                const cStart = Math.floor(Math.random() * config.gridSize); 
+                let canPlace = true; 
+                let locations = [];
+
+                // 1. Checagem
+                for (let i = 0; i < word.length; i++) { 
+                    const r = rStart + i * dir.r;
+                    const c = cStart + i * dir.c;
+                    
+                    if (r < 0 || r >= config.gridSize || c < 0 || c >= config.gridSize) {
+                        canPlace = false; break;
+                    }
+                    if (state.gridMatrix[r][c] !== '' && state.gridMatrix[r][c] !== word[i]) { 
+                        canPlace = false; break;
+                    } 
+                    locations.push({r, c});
+                } 
+                
+                // 2. Colocação
+                if (canPlace) { 
+                    state.wordsToFindLocations[word] = locations; 
+                    for (let i = 0; i < word.length; i++) { 
+                        state.gridMatrix[rStart + i * dir.r][cStart + i * dir.c] = word[i]; 
+                    } 
+                    placed = true; 
+                } 
+            } 
+        });
+        
+        // Preenchimento com letras aleatórias (mantido)
         const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-        for (let r = 0; r < config.gridSize; r++) { for (let c = 0; c < config.gridSize; c++) { if (state.gridMatrix[r][c] === '') { state.gridMatrix[r][c] = alphabet[Math.floor(Math.random() * alphabet.length)]; } } }
+        for (let r = 0; r < config.gridSize; r++) { 
+            for (let c = 0; c < config.gridSize; c++) { 
+                if (state.gridMatrix[r][c] === '') { 
+                    state.gridMatrix[r][c] = alphabet[Math.floor(Math.random() * alphabet.length)]; 
+                } 
+            } 
+        }
         
-        ui.grid.innerHTML = state.gridMatrix.map((row) => row.map((letter) => `<div class="grid-cell w-10 h-10 flex items-center justify-center text-xl font-bold bg-gray-700 rounded-md transition-transform">${letter}</div>`).join('')).join('');
+        // Define o grid-template-columns e renderiza as células com data-attributes (corrigido)
+        ui.grid.style.gridTemplateColumns = `repeat(${config.gridSize}, 1fr)`;
         
-        ui.grid.addEventListener('mousedown', startSelection);
-        ui.grid.addEventListener('touchstart', startSelection, { passive: false });
+        ui.grid.innerHTML = state.gridMatrix.map((row, rIdx) => row.map((letter, cIdx) => `<div class="grid-cell" data-row="${rIdx}" data-col="${cIdx}">${letter}</div>`).join('')).join('');
         
+        // Adiciona listener para o modo de clique sequencial
+        ui.grid.addEventListener('click', handleCellClick);
+        
+        // Inicialização do Timer
         state.timerInterval = setInterval(() => {
             state.timeLeft--;
             if (state.timeLeft >= 0) {
                 ui.timer.textContent = new Date(state.timeLeft * 1000).toISOString().substr(14, 5);
+                if (state.timeLeft <= 10) {
+                     ui.timer.classList.add('bg-red-800');
+                } else {
+                     ui.timer.classList.remove('bg-red-800');
+                }
             } else {
                 clearInterval(state.timerInterval);
-                alert('Tempo esgotado!');
-                window.location.href = `${config.endGameUrl}?status=failed`;
+                showRemainingWords(); 
+                // Redireciona após um atraso para que o usuário veja o feedback
+                setTimeout(() => {
+                    window.location.href = `${config.endGameUrl}?status=failed`;
+                }, 3000); 
             }
         }, 1000);
     };
