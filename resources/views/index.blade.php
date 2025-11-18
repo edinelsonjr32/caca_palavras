@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WordQuest | Aprenda Inglês Jogando!</title>
+    <title>Home | FastLex</title>
     
     {{-- GARANTIA DE ESTILO: Se você usa Laravel 9+ com Vite, use esta linha: --}}
     @vite(['resources/css/app.css', 'resources/js/app.js'])

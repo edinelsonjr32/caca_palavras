@@ -1,9 +1,14 @@
 <nav class="bg-dark-card shadow-lg">
     <div class="container mx-auto px-4">
         <div class="flex items-center justify-between py-3">
-            {{-- Lado Esquerdo: Logo --}}
-            <a href="{{ route('dashboard') }}" class="text-2xl font-bold text-primary-purple">
-                CAÇA-PALAVRAS
+            {{-- Lado Esquerdo: LOGO E TEXTO FASTLEX --}}
+            <a href="{{ route('dashboard') }}" class="flex items-center text-primary-purple transition">
+                
+                {{-- Imagem da Logo --}}
+                <img src="{{ asset('logo_fastlex.png') }}" alt="Logo FastLex" class="h-10 w-auto mr-2">
+                
+                {{-- Nome do Jogo Estilizado --}}
+                <span class="text-2xl font-bold tracking-wider text-yellow-400">FastLex</span>
             </a>
 
             {{-- Lado Direito: Recursos e Avatar --}}
